@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Intérprete</title>
+<link rel="stylesheet" href="/static/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎧</text></svg>">
+</head>
+<body>
+
+<header class="bar">
+  <div class="brand">
+    <span class="dot" id="dot"></span>
+    <strong>Intérprete</strong>
+    <span class="muted" id="engine">conectando…</span>
+  </div>
+
+  <div class="controls">
+    <select id="mode" title="Qué quieres leer">
+      <option value="es">Inglés → Español</option>
+      <option value="en">Solo inglés</option>
+    </select>
+    <select id="source" title="Fuente de audio">
+      <option value="display">Audio de pestaña / pantalla</option>
+      <option value="mic">Micrófono</option>
+    </select>
+    <button id="toggle" class="primary">Iniciar</button>
+    <div class="meter" title="Nivel de audio"><i id="level"></i></div>
+    <button id="smaller" class="ghost" title="Letra más pequeña">A−</button>
+    <button id="bigger" class="ghost" title="Letra más grande">A+</button>
+    <button id="clear" class="ghost" title="Limpiar pantalla">Limpiar</button>
+    <button id="save" class="ghost" title="Descargar transcripción">Guardar</button>
+  </div>
+</header>
+
+<div id="notice" class="notice hidden"></div>
+
+<main id="feed" class="feed">
+  <div class="empty" id="empty">
+    <h1>Listo para escuchar</h1>
+    <ol>
+      <li>Abre la reunión en <b>otra pestaña</b> de este mismo navegador.</li>
+      <li>Vuelve aquí y presiona <b>Iniciar</b>.</li>
+      <li>En el diálogo elige la pestaña de la reunión y activa
+          <b>«También compartir el audio de la pestaña»</b>.</li>
+    </ol>
+    <p class="muted">En <b>Inglés → Español</b> ves el inglés pequeño arriba y el español
+       grande abajo. En <b>Solo inglés</b> ves únicamente la transcripción, en grande.
+       Puedes cambiar de modo en cualquier momento, incluso a mitad de la llamada.
+       Toca cualquier línea para copiarla.</p>
+  </div>
+</main>
+
+<footer class="live" id="live">
+  <span class="pulse"></span>
+  <div class="livetext">
+    <p class="en" id="liveEn"></p>
+    <p class="es" id="liveEs"></p>
+  </div>
+</footer>
+
+<aside id="panel" class="panel hidden">
+  <div class="panel-head">
+    <strong>Explicación</strong>
+    <button id="panelClose" class="ghost">Cerrar</button>
+  </div>
+  <pre id="panelBody"></pre>
+</aside>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

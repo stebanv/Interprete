@@ -1,0 +1,10 @@
+# torch se instala aparte con el indice de CUDA 12.8 (Blackwell / RTX 50xx):
+#   pip install torch --index-url https://download.pytorch.org/whl/cu128
+fastapi
+uvicorn[standard]
+faster-whisper
+transformers
+sentencepiece
+sacremoses
+numpy
+anthropic

@@ -1,0 +1,17 @@
+# Entorno y binarios
+.venv/
+bin/cloudflared.exe
+
+# Secreto: el token de acceso al servicio
+.token
+
+# Logs y audio de prueba. Ojo: server.err imprime el token en claro.
+logs/
+
+# Transcripciones guardadas desde la página
+transcripciones/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
