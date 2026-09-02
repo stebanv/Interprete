@@ -30,7 +30,8 @@ portapapeles) una URL como:
 https://algo-aleatorio.trycloudflare.com/?k=TOKEN
 ```
 
-Esa URL se abre en el portátil, en **Chrome o Edge**. `Ctrl+C` apaga todo.
+Esa URL se abre en el portátil, en **Chrome o Edge**. Para apagarlo, `Ctrl+C`
+o simplemente cierra la ventana: el servicio está atado a ella.
 
 Para probar sin túnel, en este mismo PC: `.\scripts\start.ps1 -Local`
 
@@ -102,17 +103,25 @@ reconecta en lugar de tragar audio al vacío.
 
 ## Apagarlo
 
-`Ctrl+C` en la ventana de `start.ps1`. Pero si esa ventana se cierra de golpe, el
-servidor y el túnel **quedan huérfanos**: el túnel sigue público y nada lo
-delata. Para esos casos:
+**Cerrar la ventana de `start.ps1` basta.** `Ctrl+C` también.
+
+El servidor y el túnel quedan atados a esa ventana con un *Job Object* de
+Windows (`KILL_ON_JOB_CLOSE`): cuando el PowerShell muere se cierra el handle
+del job y el sistema operativo termina a sus miembros, muera como muera el
+padre. No depende de que corra ningún bloque de limpieza.
+
+Antes de eso no era así: `Ctrl+C` limpiaba, pero cerrar con la X mataba el
+PowerShell sin ejecutar el `finally`, y el servidor y el túnel **quedaban
+huérfanos con la URL pública viva**. Pasó dos veces durante el desarrollo.
+
+Si alguna vez el job no se puede crear, `start.ps1` te avisa en amarillo al
+arrancar. Y como red de seguridad, para matar cualquier resto por ruta:
 
 ```powershell
 .\scripts\detener.ps1
 ```
 
-Los mata por ruta, sin depender de quién los lanzó, y verifica que el puerto
-8777 dejó de responder antes de decirte que terminó. Si vas a dejar el PC solo
-después de la entrevista, corre esto.
+Verifica que el puerto 8777 dejó de responder antes de decirte que terminó.
 
 ---
 

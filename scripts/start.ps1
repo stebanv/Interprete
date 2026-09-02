@@ -34,6 +34,113 @@ Remove-Item $serverLog, $tunnelLog -ErrorAction SilentlyContinue
 $serverProc = $null
 $tunnelProc = $null
 
+# --- Atar los hijos a la vida de esta ventana ------------------------------
+# Ctrl+C corre el bloque finally, pero cerrar la ventana con la X mata este
+# PowerShell sin ejecutar nada: el servidor y el tunel quedaban huerfanos, con
+# la URL publica viva y nadie enterado.
+#
+# Un Job Object con KILL_ON_JOB_CLOSE resuelve eso a nivel de sistema
+# operativo: cuando muere este proceso se cierra el handle del job y Windows
+# termina a todos sus miembros, muera como muera el padre.
+$codigoJob = @"
+using System;
+using System.Runtime.InteropServices;
+
+public static class InterpreteJob
+{
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
+    private static extern IntPtr CreateJobObject(IntPtr attributes, string name);
+
+    [DllImport("kernel32.dll")]
+    private static extern bool SetInformationJobObject(IntPtr job, int infoClass, IntPtr info, uint length);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool AssignProcessToJobObject(IntPtr job, IntPtr process);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct BasicLimits
+    {
+        public long PerProcessUserTimeLimit;
+        public long PerJobUserTimeLimit;
+        public uint LimitFlags;
+        public UIntPtr MinimumWorkingSetSize;
+        public UIntPtr MaximumWorkingSetSize;
+        public uint ActiveProcessLimit;
+        public UIntPtr Affinity;
+        public uint PriorityClass;
+        public uint SchedulingClass;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct IoCounters
+    {
+        public ulong ReadOperationCount;
+        public ulong WriteOperationCount;
+        public ulong OtherOperationCount;
+        public ulong ReadTransferCount;
+        public ulong WriteTransferCount;
+        public ulong OtherTransferCount;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct ExtendedLimits
+    {
+        public BasicLimits BasicLimitInformation;
+        public IoCounters IoInfo;
+        public UIntPtr ProcessMemoryLimit;
+        public UIntPtr JobMemoryLimit;
+        public UIntPtr PeakProcessMemoryUsed;
+        public UIntPtr PeakJobMemoryUsed;
+    }
+
+    private const int ExtendedLimitInformation = 9;
+    private const uint KillOnJobClose = 0x2000;
+
+    private static IntPtr job = IntPtr.Zero;
+
+    public static bool Crear()
+    {
+        job = CreateJobObject(IntPtr.Zero, null);
+        if (job == IntPtr.Zero) { return false; }
+
+        ExtendedLimits limites = new ExtendedLimits();
+        limites.BasicLimitInformation.LimitFlags = KillOnJobClose;
+
+        int tamano = Marshal.SizeOf(typeof(ExtendedLimits));
+        IntPtr buffer = Marshal.AllocHGlobal(tamano);
+        try
+        {
+            Marshal.StructureToPtr(limites, buffer, false);
+            return SetInformationJobObject(job, ExtendedLimitInformation, buffer, (uint)tamano);
+        }
+        finally
+        {
+            Marshal.FreeHGlobal(buffer);
+        }
+    }
+
+    public static bool Adoptar(IntPtr proceso)
+    {
+        if (job == IntPtr.Zero) { return false; }
+        return AssignProcessToJobObject(job, proceso);
+    }
+}
+"@
+
+$jobActivo = $false
+try {
+    if (-not ("InterpreteJob" -as [type])) { Add-Type -TypeDefinition $codigoJob -Language CSharp }
+    $jobActivo = [InterpreteJob]::Crear()
+} catch {
+    $jobActivo = $false
+}
+
+function Adoptar-Proceso($proc) {
+    if ($script:jobActivo -and $proc -ne $null) {
+        try { [InterpreteJob]::Adoptar($proc.Handle) | Out-Null } catch {}
+    }
+}
+
 function Stop-All {
     foreach ($proc in @($script:tunnelProc, $script:serverProc)) {
         if ($proc -ne $null -and -not $proc.HasExited) {
@@ -55,6 +162,7 @@ try {
         -RedirectStandardOutput $serverLog `
         -RedirectStandardError  "$serverLog.err" `
         -WindowStyle Hidden -PassThru
+    Adoptar-Proceso $serverProc
 
     # Espera a que los modelos esten cargados
     $ready = $false
@@ -90,6 +198,7 @@ try {
             -RedirectStandardOutput "$tunnelLog.out" `
             -RedirectStandardError  $tunnelLog `
             -WindowStyle Hidden -PassThru
+        Adoptar-Proceso $tunnelProc
 
         $public = $null
         for ($i = 0; $i -lt 60; $i++) {
@@ -117,6 +226,13 @@ try {
     Write-Host "  ================================================================" -ForegroundColor DarkGray
     try { Set-Clipboard -Value $url; Write-Host "   (copiada al portapapeles)" -ForegroundColor DarkGray } catch {}
     Write-Host ""
+    if ($jobActivo) {
+        Write-Host "   Al cerrar esta ventana el servicio se apaga solo." -ForegroundColor DarkGray
+    }
+    else {
+        Write-Host "   OJO: no se pudo atar el servicio a esta ventana." -ForegroundColor Yellow
+        Write-Host "   Si la cierras con la X, apagalo con .\scripts\detener.ps1" -ForegroundColor Yellow
+    }
     Write-Host "   Mientras esta ventana siga abierta, el servicio esta arriba." -ForegroundColor DarkGray
     Write-Host "   Ctrl+C para apagarlo. Para consultarlo desde otra ventana:" -ForegroundColor DarkGray
     Write-Host "   .\scripts\estado.ps1" -ForegroundColor DarkGray
