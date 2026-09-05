@@ -1,16 +1,20 @@
 # Intérprete
 
-Subtítulos en vivo para entrevistas en inglés. El audio se captura en el
-portátil, viaja al PC de escritorio, y vuelve como texto en la pantalla del
-portátil. Todo el procesamiento pesado corre en la RTX 5070; el portátil solo
-captura y muestra.
+Subtítulos en vivo de una reunión. El audio se captura en el portátil, viaja al
+PC de escritorio, y vuelve como texto en la pantalla del portátil. Todo el
+procesamiento pesado corre en la RTX 5070; el portátil solo captura y muestra.
 
-Dos modos, conmutables en cualquier momento incluso a mitad de llamada:
+Tres modos, conmutables en cualquier momento incluso a mitad de llamada:
 
-| Modo | Qué ves |
-|---|---|
-| **Inglés → Español** | El inglés pequeño arriba, el español grande abajo |
-| **Solo inglés** | Únicamente la transcripción en inglés, en grande |
+| Modo | Qué ves | Para qué |
+|---|---|---|
+| **Audio inglés → texto español** | Inglés pequeño arriba, español grande abajo | Entrevista o reunión en inglés que cuesta seguir de oído |
+| **Audio inglés → texto inglés** | Solo la transcripción, en grande | Entiendes el inglés escrito y prefieres el original |
+| **Audio español → texto español** | Solo la transcripción, en grande | Reunión en español: subtítulos en vivo para quien no oye bien |
+
+Whisper large-v3 es multilingüe, así que los tres modos comparten la **misma
+copia del modelo en la GPU**: cambiar de idioma no recarga nada ni cuesta VRAM
+extra. El idioma se elige por llamada.
 
 ---
 
@@ -208,12 +212,14 @@ Primero genera el audio de prueba (una sola vez; no va en el repositorio):
 .\scripts\generar-audio-prueba.ps1
 ```
 
-Arma dos WAV con las voces de Windows: uno a ritmo normal y otro rápido con la
-jerga que rompe traductores. Con el servidor arriba:
+Arma tres WAV con las voces de Windows: dos en inglés (uno a ritmo normal y otro
+rápido con la jerga que rompe traductores) y uno en español. Con el servidor
+arriba:
 
 ```powershell
-.\.venv\Scripts\python.exe scripts\probar.py logs\prueba2.wav es
-.\.venv\Scripts\python.exe scripts\probar.py logs\prueba2.wav en
+.\.venv\Scripts\python.exe scripts\probar.py logs\prueba2.wav en-es
+.\.venv\Scripts\python.exe scripts\probar.py logs\prueba2.wav en-en
+.\.venv\Scripts\python.exe scripts\probar.py logs\prueba-es.wav es-es
 ```
 
 Reproduce el WAV contra el servidor al mismo ritmo que lo haría el portátil e
@@ -234,6 +240,18 @@ Todo por variables de entorno, o editando `server/config.py`:
 
 Los tiempos de segmentación (`END_SILENCE`, `PARTIAL_INTERVAL`, `MAX_UTTERANCE`)
 están en `server/config.py` con su explicación.
+
+### Los prompts por idioma
+
+`PROMPT_EN` y `PROMPT_ES` en `config.py` le sugieren a Whisper el vocabulario
+que va a escuchar. Cada uno tiene que estar **en el idioma de su audio**: un
+prompt en inglés delante de audio en español empuja al modelo a traducir en vez
+de transcribir.
+
+Y `PROMPT_ES` va **con tildes a propósito**. Whisper imita la ortografía del
+prompt: escrito sin acentos, transcribe *"conciliacion bancaria"* y *"dias"*.
+Con acentos devuelve español correcto — y de paso escribe "mil" en vez de
+"1000".
 
 ## Si algo falla
 

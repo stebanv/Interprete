@@ -176,7 +176,7 @@
     node.appendChild(en);
     node.appendChild(es);
 
-    if (claudeReady) {
+    if (claudeReady && modeSel.value.startsWith("en")) {
       const btn = document.createElement("button");
       btn.className = "ghost explain";
       btn.textContent = "explicar";
@@ -350,17 +350,23 @@
   };
 
   const MODE_KEY = "interprete.mode";
+  // Los nombres viejos quedaron guardados en navegadores que ya usaron esto.
+  const MODOS_VIEJOS = { es: "en-es", en: "en-en" };
+  const ETIQUETAS = {
+    "en-es": "Audio en inglés, texto en español.",
+    "en-en": "Audio en inglés, texto en inglés. Sin traducción.",
+    "es-es": "Audio en español, texto en español. Sin traducción.",
+  };
   try {
-    const saved = localStorage.getItem(MODE_KEY);
-    if (saved === "en" || saved === "es") modeSel.value = saved;
+    let guardado = localStorage.getItem(MODE_KEY);
+    guardado = MODOS_VIEJOS[guardado] || guardado;
+    if (ETIQUETAS[guardado]) modeSel.value = guardado;
   } catch {}
   modeSel.onchange = () => {
     try { localStorage.setItem(MODE_KEY, modeSel.value); } catch {}
     if (wsReady) ws.send(`mode:${modeSel.value}`);
     liveEn.textContent = ""; liveEs.textContent = "";
-    say(modeSel.value === "es"
-      ? "Modo inglés → español."
-      : "Modo solo inglés: sin traducción.", 2500);
+    say(ETIQUETAS[modeSel.value] || "", 2500);
   };
 
   const FONT_KEY = "interprete.fontsize";

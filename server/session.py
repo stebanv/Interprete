@@ -20,6 +20,17 @@ log = logging.getLogger("interprete.session")
 _FRAME_SECONDS = config.FRAME_MS / 1000.0
 _PREROLL_FRAMES = max(1, int(config.PRE_ROLL / _FRAME_SECONDS))
 
+# modo -> (idioma del audio, traducir al espanol)
+MODOS: dict[str, tuple[str, bool]] = {
+    "en-es": ("en", True),    # entrevista en ingles, se lee en espanol
+    "en-en": ("en", False),   # entrevista en ingles, se lee en ingles
+    "es-es": ("es", False),   # reunion en espanol, se lee en espanol
+    # Nombres viejos: una pestana abierta desde antes sigue funcionando.
+    "es": ("en", True),
+    "en": ("en", False),
+}
+MODO_POR_DEFECTO = "en-es"
+
 
 class LiveSession:
     def __init__(self, engine, translator, send) -> None:
@@ -47,8 +58,7 @@ class LiveSession:
         self.peak = 0.0
         self.busy = False
         self.paused = False
-        # "es" = ingles traducido a espanol | "en" = solo transcripcion en ingles
-        self.mode = "es"
+        self.mode = MODO_POR_DEFECTO
         self.gpu_lock = asyncio.Lock()
         self.context = ""
         self.tasks: set[asyncio.Task] = set()
@@ -64,6 +74,24 @@ class LiveSession:
             task.cancel()
         if self.tasks:
             await asyncio.gather(*self.tasks, return_exceptions=True)
+
+    @property
+    def language(self) -> str:
+        return MODOS.get(self.mode, MODOS[MODO_POR_DEFECTO])[0]
+
+    @property
+    def translates(self) -> bool:
+        return MODOS.get(self.mode, MODOS[MODO_POR_DEFECTO])[1]
+
+    def set_mode(self, mode: str) -> bool:
+        """Cambia de modo. El contexto acumulado se descarta: esta en el idioma
+        anterior y sesgaria la transcripcion siguiente."""
+        if mode not in MODOS:
+            return False
+        if mode != self.mode:
+            self.mode = mode
+            self.context = ""
+        return True
 
     def reset(self) -> None:
         self.in_speech = False
@@ -185,17 +213,18 @@ class LiveSession:
                     return  # la frase ya se cerro: el parcial no sirve
                 self.busy = True
                 try:
-                    english = await asyncio.to_thread(
-                        self.engine.transcribe, audio, self.context, False
+                    texto = await asyncio.to_thread(
+                        self.engine.transcribe, audio, self.context, False,
+                        self.language,
                     )
                 finally:
                     self.busy = False
-            if not english or utt_id != self.utt_id:
+            if not texto or utt_id != self.utt_id:
                 return
             spanish = ""
-            if self.mode == "es":
-                spanish = await asyncio.to_thread(self.translator.translate, english)
-            await self.send({"type": "partial", "en": english, "es": spanish})
+            if self.translates:
+                spanish = await asyncio.to_thread(self.translator.translate, texto)
+            await self.send({"type": "partial", "en": texto, "es": spanish})
         except asyncio.CancelledError:
             raise
         except Exception as exc:
@@ -212,22 +241,22 @@ class LiveSession:
 
             started = time.monotonic()
             async with self.gpu_lock:
-                english = await asyncio.to_thread(
-                    self.engine.transcribe, audio, self.context, True
+                texto = await asyncio.to_thread(
+                    self.engine.transcribe, audio, self.context, True, self.language,
                 )
-            if not english:
+            if not texto:
                 await self.send({"type": "clear"})
                 return
 
             spanish = ""
-            if self.mode == "es":
-                spanish = await asyncio.to_thread(self.translator.translate, english)
-            self.context = f"{self.context} {english}".strip()[-config.MAX_CONTEXT_CHARS:]
+            if self.translates:
+                spanish = await asyncio.to_thread(self.translator.translate, texto)
+            self.context = f"{self.context} {texto}".strip()[-config.MAX_CONTEXT_CHARS:]
             self.seq += 1
             await self.send({
                 "type": "final",
                 "id": self.seq,
-                "en": english,
+                "en": texto,
                 "es": spanish,
                 "latency_ms": int((time.monotonic() - started) * 1000),
                 "audio_s": round(audio.size / config.SAMPLE_RATE, 2),

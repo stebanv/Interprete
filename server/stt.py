@@ -1,4 +1,8 @@
-"""Motor de transcripcion (ingles) sobre faster-whisper / CTranslate2."""
+"""Motor de transcripcion sobre faster-whisper / CTranslate2.
+
+Whisper large-v3 es multilingue: el idioma se elige por llamada, no al cargar
+el modelo, asi que ingles y espanol comparten la misma copia en la GPU.
+"""
 
 import logging
 import os
@@ -56,6 +60,16 @@ _HALLUCINATIONS = {
     "subtitles by the amara.org community", "transcription by castingwords",
     "i'm going to go ahead and take a look at the video.",
     "the end.", "music", "applause", "silence",
+    # Las mismas alucinaciones existen en espanol, del mismo origen.
+    "gracias.", "gracias", "gracias por ver el video.",
+    "gracias por ver el video", "¡gracias por ver el video!",
+    "suscribete al canal.", "suscríbete al canal.",
+    "suscríbete a mi canal.", "¡suscríbete!",
+    "subtitulos realizados por la comunidad de amara.org",
+    "subtítulos realizados por la comunidad de amara.org",
+    "subtítulos por la comunidad de amara.org",
+    "música", "aplausos", "silencio", "hasta la próxima.",
+    "¡hasta la próxima!", "nos vemos.", "adiós.", "bueno.", "vale.",
 }
 _BRACKETED = re.compile(r"^[\[\(\*♪][^\]\)\*♪]*[\]\)\*♪]$")
 
@@ -116,29 +130,34 @@ class WhisperEngine:
     def warmup(self) -> None:
         """Primera inferencia con audio mudo, para que la real no pague el arranque."""
         silence = np.zeros(config.SAMPLE_RATE, dtype=np.float32)
-        try:
-            self.transcribe(silence, final=False)
-        except Exception as exc:  # pragma: no cover
-            log.warning("Warmup fallo: %s", exc)
+        for idioma in ("en", "es"):
+            try:
+                self.transcribe(silence, final=False, language=idioma)
+            except Exception as exc:  # pragma: no cover
+                log.warning("Warmup (%s) fallo: %s", idioma, exc)
 
     def transcribe(
         self,
         audio: np.ndarray,
         context: str = "",
         final: bool = False,
+        language: str = "en",
     ) -> str:
-        """Devuelve el texto en ingles de un bloque de audio float32 a 16 kHz."""
+        """Transcribe un bloque de audio float32 a 16 kHz, en su propio idioma."""
         if audio.size < config.SAMPLE_RATE // 10:
             return ""
 
-        initial_prompt = config.GLOSSARY
+        # El prompt debe ir en el idioma del audio: uno en ingles delante de
+        # audio en espanol empuja al modelo a traducir en vez de transcribir.
+        base_prompt = config.PROMPTS.get(language, config.PROMPT_EN)
+        initial_prompt = base_prompt
         if context:
-            initial_prompt = f"{config.GLOSSARY} {context}"
+            initial_prompt = f"{base_prompt} {context}"
 
         with self._lock:
             segments, _info = self.model.transcribe(
                 audio,
-                language="en",
+                language=language,
                 task="transcribe",
                 beam_size=5 if final else 1,
                 best_of=5 if final else 1,

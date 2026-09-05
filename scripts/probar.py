@@ -19,7 +19,7 @@ ROOT = Path(__file__).resolve().parent.parent
 CHUNK_MS = 100
 
 
-async def main(wav_path: Path, mode: str = "es") -> None:
+async def main(wav_path: Path, mode: str = "en-es") -> None:
     token = (ROOT / ".token").read_text(encoding="utf-8").strip()
     url = f"ws://127.0.0.1:8777/ws?k={token}"
 
@@ -47,7 +47,8 @@ async def main(wav_path: Path, mode: str = "es") -> None:
                     print(f"[{elapsed:6.2f}s] ...  {msg['es'] or msg['en']}")
                 elif msg["type"] == "final":
                     finals += 1
-                    print(f"[{elapsed:6.2f}s] EN   {msg['en']}")
+                    etiqueta = "EN  " if msg["es"] else "TXT "
+                    print(f"[{elapsed:6.2f}s] {etiqueta} {msg['en']}")
                     if msg["es"]:
                         print(f"[{elapsed:6.2f}s] ES   {msg['es']}")
                     print(f"          ({msg['latency_ms']} ms de inferencia, "
@@ -73,5 +74,5 @@ async def main(wav_path: Path, mode: str = "es") -> None:
 
 if __name__ == "__main__":
     path = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "logs" / "prueba.wav"
-    modo = sys.argv[2] if len(sys.argv) > 2 else "es"
+    modo = sys.argv[2] if len(sys.argv) > 2 else "en-es"
     asyncio.run(main(path, modo))

@@ -143,9 +143,8 @@ async def websocket_endpoint(ws: WebSocket) -> None:
                     await send({"type": "clear"})
                 elif text.startswith("mode:"):
                     requested = text.split(":", 1)[1]
-                    if requested in ("en", "es"):
-                        session.mode = requested
-                        await send({"type": "mode", "mode": requested})
+                    if session.set_mode(requested):
+                        await send({"type": "mode", "mode": session.mode})
                 elif text == "pause":
                     session.paused = True
                 elif text == "resume":

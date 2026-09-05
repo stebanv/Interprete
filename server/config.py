@@ -53,7 +53,9 @@ VAD_FLOOR_MIN = 0.0016   # piso absoluto: nada por debajo es voz
 
 # --- Contexto para Whisper -------------------------------------------------
 # Sesga el modelo hacia el vocabulario que va a aparecer en una entrevista RPA.
-GLOSSARY = (
+# Hay uno por idioma: el initial_prompt tiene que estar en el mismo idioma que
+# el audio, o empuja al modelo a transcribir en el idioma equivocado.
+PROMPT_EN = (
     "This is a job interview for a Robotic Process Automation developer position. "
     "Terms that may appear: RPA, UiPath, Automation Anywhere, Blue Prism, Power Automate, "
     "Orchestrator, REFramework, dispatcher, performer, queue, transaction, selector, "
@@ -61,6 +63,21 @@ GLOSSARY = (
     "SAP, Citrix, OCR, API, SQL, Python, VBA, Excel, Active Directory, "
     "stakeholder, scalability, deployment, code review, sprint, backlog."
 )
+
+# OJO: este texto va CON tildes a proposito. Whisper imita la ortografia del
+# initial_prompt: escrito sin acentos, transcribe "conciliacion" y "dias".
+PROMPT_ES = (
+    "Esta es una reunión de trabajo sobre automatización de procesos. "
+    "Términos que pueden aparecer: RPA, UiPath, Automation Anywhere, Blue Prism, "
+    "Power Automate, Orchestrator, REFramework, dispatcher, performer, cola, "
+    "transacción, selector, atendido, desatendido, bot, flujo, actividad, "
+    "manejo de excepciones, reintento, SLA, SAP, Citrix, OCR, API, SQL, Python, "
+    "VBA, Excel, Active Directory, despliegue, sprint, backlog, entregable, "
+    "cronograma, seguimiento, indicador, alcance, conciliación bancaria."
+)
+
+# Que prompt usar segun el idioma del audio.
+PROMPTS = {"en": PROMPT_EN, "es": PROMPT_ES}
 
 MAX_CONTEXT_CHARS = 220  # cuanto texto previo se le pasa como initial_prompt
 

@@ -19,16 +19,25 @@ if (-not (Test-Path $logDir)) { New-Item -ItemType Directory -Path $logDir | Out
 Add-Type -AssemblyName System.Speech
 $synth = New-Object System.Speech.Synthesis.SpeechSynthesizer
 
-$voz = $synth.GetInstalledVoices() |
-       Where-Object { $_.VoiceInfo.Culture.TwoLetterISOLanguageName -eq "en" } |
-       Select-Object -First 1
-if (-not $voz) {
+function Get-Voz($idioma) {
+    return $synth.GetInstalledVoices() |
+           Where-Object { $_.VoiceInfo.Culture.TwoLetterISOLanguageName -eq $idioma } |
+           Select-Object -First 1
+}
+
+$vozEn = Get-Voz "en"
+$vozEs = Get-Voz "es"
+if (-not $vozEn) {
     Write-Host "No hay ninguna voz en ingles instalada. Voces disponibles:" -ForegroundColor Red
     $synth.GetInstalledVoices() | ForEach-Object { "  " + $_.VoiceInfo.Name + " (" + $_.VoiceInfo.Culture + ")" }
     exit 1
 }
-$synth.SelectVoice($voz.VoiceInfo.Name)
-Write-Host "Voz: $($voz.VoiceInfo.Name)" -ForegroundColor DarkGray
+Write-Host "Voz inglesa: $($vozEn.VoiceInfo.Name)" -ForegroundColor DarkGray
+if ($vozEs) {
+    Write-Host "Voz espanola: $($vozEs.VoiceInfo.Name)" -ForegroundColor DarkGray
+} else {
+    Write-Host "Sin voz en espanol: no se genera prueba-es.wav" -ForegroundColor Yellow
+}
 
 $formato = New-Object System.Speech.AudioFormat.SpeechAudioFormatInfo(
     16000,
@@ -61,11 +70,29 @@ Why are you looking to leave your current role, and what are your salary expecta
 </speak>
 '@
 
-foreach ($caso in @(
-    @{ Archivo = "prueba.wav";  Guion = $guion1; Rate = 0 },
-    @{ Archivo = "prueba2.wav"; Guion = $guion2; Rate = 2 }
-)) {
+# prueba-es.wav - reunion en espanol, para el modo audio espanol -> texto espanol
+$guion3 = @'
+<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="es-MX">
+<break time="700ms"/>
+Buenos dias a todos, gracias por conectarse. <break time="900ms"/>
+Quiero que revisemos el avance del robot de conciliacion bancaria antes del cierre de mes. <break time="1000ms"/>
+El proceso viene fallando cuando la cola tiene mas de mil transacciones pendientes. <break time="1000ms"/>
+Necesito que alguien se encargue del manejo de excepciones y me confirme la fecha de despliegue. <break time="1000ms"/>
+Steban, cuentanos como vas con la automatizacion del reporte diario, por favor. <break time="900ms"/>
+</speak>
+'@
+
+$casos = @(
+    @{ Archivo = "prueba.wav";  Guion = $guion1; Rate = 0; Voz = $vozEn },
+    @{ Archivo = "prueba2.wav"; Guion = $guion2; Rate = 2; Voz = $vozEn }
+)
+if ($vozEs) {
+    $casos += @{ Archivo = "prueba-es.wav"; Guion = $guion3; Rate = 0; Voz = $vozEs }
+}
+
+foreach ($caso in $casos) {
     $destino = Join-Path $logDir $caso.Archivo
+    $synth.SelectVoice($caso.Voz.VoiceInfo.Name)
     $synth.Rate = $caso.Rate
     $synth.SetOutputToWaveFile($destino, $formato)
     $synth.SpeakSsml($caso.Guion)
@@ -78,5 +105,6 @@ $synth.Dispose()
 
 Write-Host ""
 Write-Host "Listo. Pruebalos con el servidor arriba:" -ForegroundColor DarkGray
-Write-Host "  .\.venv\Scripts\python.exe scripts\probar.py logs\prueba2.wav es"
-Write-Host "  .\.venv\Scripts\python.exe scripts\probar.py logs\prueba2.wav en"
+Write-Host "  .\.venv\Scripts\python.exe scripts\probar.py logs\prueba2.wav en-es"
+Write-Host "  .\.venv\Scripts\python.exe scripts\probar.py logs\prueba2.wav en-en"
+Write-Host "  .\.venv\Scripts\python.exe scripts\probar.py logs\prueba-es.wav es-es"
