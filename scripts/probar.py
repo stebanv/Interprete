@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Prueba de punta a punta sin navegador.
 
 Reproduce un WAV de 16 kHz mono contra el servidor al mismo ritmo que lo haria

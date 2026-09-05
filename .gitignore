@@ -15,3 +15,6 @@ transcripciones/
 __pycache__/
 *.pyc
 *.pyo
+
+# Estado del proceso en ejecucion
+.estado.json

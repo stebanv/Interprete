@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Configuracion central del Interprete.
 
 Todo se puede sobreescribir con variables de entorno con prefijo INTERPRETE_.

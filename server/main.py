@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Servidor del Interprete: WebSocket de audio -> subtitulos en espanol."""
 
 import asyncio

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Traduccion ingles -> espanol.
 
 Ruta principal: MarianMT (opus-mt-tc-big-en-es) local en GPU. Son ~30 ms

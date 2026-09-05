@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Glosario tecnico: protege los terminos que el traductor destroza.
 
 El modelo de traduccion es generalista. Traduce muy bien la conversacion normal

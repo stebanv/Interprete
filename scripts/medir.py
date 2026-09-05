@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Mide VRAM y velocidad real de una configuracion de modelos.
 
 Corre en un proceso aparte por configuracion, porque la VRAM solo se libera de

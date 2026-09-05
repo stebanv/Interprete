@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
 /* Intérprete — cliente. Captura audio, lo manda al PC por WebSocket
    y pinta los subtítulos en español que vuelven. */
 

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Segmentacion en vivo del audio y orquestacion de transcripcion + traduccion.
 
 Estrategia: VAD por energia frame a frame (20 ms). Mientras hay voz se reescribe

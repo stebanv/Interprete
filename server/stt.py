@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Motor de transcripcion sobre faster-whisper / CTranslate2.
 
 Whisper large-v3 es multilingue: el idioma se elige por llamada, no al cargar
